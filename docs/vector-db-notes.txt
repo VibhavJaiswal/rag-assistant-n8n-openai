@@ -1,0 +1,7 @@
+A vector database is a type of specialized database designed to store vector embeddings — numerical representations of data such as text, images, or audio. These embeddings allow for similarity-based search rather than exact matching.
+
+Pinecone is a managed vector database service that provides real-time indexing and retrieval of high-dimensional vectors. It is optimized for use cases in AI, such as semantic search, recommendation engines, and question-answering systems.
+
+Vector databases typically support operations like nearest neighbor search, filtering by metadata, and scalable indexing. They are critical components in Retrieval-Augmented Generation (RAG) systems, enabling Large Language Models (LLMs) to retrieve relevant external context.
+
+LangChain is an open-source framework designed to help developers build applications using LLMs. It includes components for prompt management, memory, chains of thought, and integration with vector stores like Pinecone or FAISS.
