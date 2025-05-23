@@ -117,8 +117,7 @@ Visit: [http://localhost:5500](http://localhost:5500)
 ## 👤 Author
 
 **Vibhav Jaiswal**  
-AI/ML Engineer | Data Scientist | GenAI Solutions Builder  
-📍 Lucknow, India  
+AI/ML Engineer | Data Scientist | GenAI Solutions Builder   
 📫 [LinkedIn](https://www.linkedin.com/in/vibhavjaiswal) • [GitHub](https://github.com/VibhavJaiswal)
 
 ---
