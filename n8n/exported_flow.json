@@ -1,0 +1,428 @@
+{
+  "name": "My workflow 3",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "3c16bb35-a766-4fb0-9238-c3d92890339e",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -860,
+        -20
+      ],
+      "id": "dd0db3ac-e157-4657-baf4-1fc8843646e3",
+      "name": "Webhook",
+      "webhookId": "3c16bb35-a766-4fb0-9238-c3d92890339e"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:8000/rag-search",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"query\": \"{{ $json.query }}\",\n  \"namespace\": \"genai-agent\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -460,
+        200
+      ],
+      "id": "d6a72534-a0ac-48a3-98fb-e07483b5594a",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({\n  query: $node[\"Code\"].json[\"query\"] || \"No query\",\n  answer: $node[\"OpenAI\"].json[\"message\"][\"content\"] || \"No answer generated\",\n  references: $node[\"Code\"].json[\"references\"] || \"No sources found\",\n  score: $node[\"Code\"].json[\"score\"] || 0,\n  reliable: $node[\"Code\"].json[\"reliable\"] || false\n}) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1340,
+        -200
+      ],
+      "id": "0b06f228-033d-478b-b7a6-7d68ed4458fc",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1Iz0mcvgc2nz-JpdzaD_qBcsWQX1IKDkuO8fDLuojQ98",
+          "mode": "list",
+          "cachedResultName": "RAG Search Logs",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Iz0mcvgc2nz-JpdzaD_qBcsWQX1IKDkuO8fDLuojQ98/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Iz0mcvgc2nz-JpdzaD_qBcsWQX1IKDkuO8fDLuojQ98/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Query": "={{ $node[\"Code\"].json[\"query\"] }}",
+            "Top Answer": "={{ $json.top_answer }}",
+            "GPT Response": "={{ $node[\"OpenAI\"].json[\"message\"][\"content\"] || $json.message.content }}",
+            "Score": "={{ $node[\"Code\"].json[\"score\"] }}",
+            "Timestamp": "={{ $now }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Query",
+              "displayName": "Query",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Top Answer",
+              "displayName": "Top Answer",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "GPT Response",
+              "displayName": "GPT Response",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Score",
+              "displayName": "Score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Timestamp",
+              "displayName": "Timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1360,
+        200
+      ],
+      "id": "bf48bbb6-aabd-44ff-b430-a225fd9fb87e",
+      "name": "Google Sheets",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "NKZ69kvmd2xusGSF",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract query\nconst query = $json.body?.query || $json.query || \"No question provided\";\n\n// Extract vector search results\nconst results = $json.results || [];\n\n// Prepare references, context, and score arrays\nconst references = results.map((r, i) => `(${i + 1}) ${r.metadata?.source || \"Unknown source\"}`).join(\"\\n\");\nconst context = results.map((r, i) => `(${i + 1}) ${r.text || \"No text available\"}`).join(\"\\n\\n\");\nconst scores = results.map(r => r.score ?? 0);\n\n// Get top result\nconst topResult = results[0] || {};\nconst top_answer = topResult.text?.trim() || \"\";\nconst score = topResult.score ?? 0;\n\n// ✅ Only determine reliability, don’t decide answer here\nconst reliable = (\n  top_answer.length > 20 &&\n  !top_answer.toLowerCase().includes(\"i couldn’t find\") &&\n  score >= 0.4\n);\n\n// ✅ Let OpenAI decide how to answer using retrieved context\nconst gpt_prompt = [\n  {\n    role: \"system\",\n    content: \"You are a helpful AI assistant integrated into a Retrieval-Augmented Generation (RAG) system. You must answer using only the provided retrieved context. Do not make assumptions. If the answer is not found in the context, clearly say so.\"\n  },\n  {\n    role: \"user\",\n    content: `Here is the user's question. Respond clearly and concisely based only on the following retrieved context.\\n\\nQuestion: ${query}\\n\\nRetrieved Context:\\n${context}\\n\\nAnswer:`\n  }\n];\n\n// Return structured data to OpenAI node\nreturn [\n  {\n    json: {\n      query,\n      score,\n      reliable,\n      references,\n      scores,\n      debug_note: `Query=${query} | Score=${score}`,\n      gpt_prompt\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        140,
+        0
+      ],
+      "id": "025a8098-797d-4333-9337-8b956984ea41",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.1,
+      "position": [
+        -80,
+        0
+      ],
+      "id": "45dfcfb4-5de3-406a-89bb-32e6884ab3f5",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e71c9c7d-ca53-4fc1-a59d-bc9b0b1cda0b",
+              "name": "=query",
+              "value": "={{ $json[\"body\"][\"query\"] }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -660,
+        200
+      ],
+      "id": "930bb96e-dce2-47cf-a32e-9cf16ad6811e",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o",
+          "mode": "list",
+          "cachedResultName": "GPT-4O"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "={{ $json.gpt_prompt[0].content }}",
+              "role": "system"
+            },
+            {
+              "content": "={{ $json.gpt_prompt[1].content }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        400,
+        0
+      ],
+      "id": "1b124595-dad2-4f45-838d-c08511a401ee",
+      "name": "OpenAI",
+      "credentials": {
+        "openAiApi": {
+          "id": "LZzRIlBohrUITnE6",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "217d381c-27b9-43bb-85e4-3c07e8123747",
+              "name": "results",
+              "value": "={{ $json.results }}",
+              "type": "array"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -280,
+        200
+      ],
+      "id": "df381420-a317-42a3-a3cb-71a90f32f9ca",
+      "name": "Edit Fields1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "2bd42a08-d6a9-49ef-8326-798dcc756ce0",
+              "name": "=query",
+              "value": "={{$node[\"Code\"].json[\"query\"]}}",
+              "type": "string"
+            },
+            {
+              "id": "c62fc45e-bd41-4df6-bca4-3e3c5f7c3b7c",
+              "name": "=top_answer",
+              "value": "={{ $node[\"OpenAI\"].json[\"message\"][\"content\"] }}",
+              "type": "string"
+            },
+            {
+              "id": "60b2d390-dc8a-4d08-91d2-b7fd72ecc34c",
+              "name": "score",
+              "value": "={{$node[\"Code\"].json[\"score\"]}}",
+              "type": "number"
+            },
+            {
+              "id": "9bb0ad99-b6a8-497f-b6a6-4085af3cbb69",
+              "name": "=references",
+              "value": "={{$node[\"Code\"].json[\"references\"] || \"No sources\"}}",
+              "type": "string"
+            },
+            {
+              "id": "4be9bc38-3585-4fb8-9bcc-a0c7b7c22ab9",
+              "name": "=reliable",
+              "value": "={{ $node[\"Code\"].json[\"reliable\"] }}",
+              "type": "boolean"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        900,
+        0
+      ],
+      "id": "d9be4c03-d80a-4c52-9bab-d42d6a1e007b",
+      "name": "Edit Fields2"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond to Webhook": {
+      "main": [
+        []
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "OpenAI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Sheets": {
+      "main": [
+        []
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Edit Fields2": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "5e1d1e27-f73e-424c-8493-523f46feab60",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "37c479aa62060ffd4c0bfe0659b901c631ee3da627c1ece8fb9d8bcf1c2258f4"
+  },
+  "id": "WNLxyLUMUzukPQE6",
+  "tags": []
+}

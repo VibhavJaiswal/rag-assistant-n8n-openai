@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Ask a Question to AI</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      font-family: Arial, sans-serif;
+      background: #f0f2f5;
+    }
+
+    .container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 40px 20px;
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+
+    h2 {
+      font-size: 2em;
+      margin-bottom: 20px;
+    }
+
+    label, input, button {
+      font-size: 1.2em;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+
+    button {
+      padding: 10px 20px;
+      font-size: 1.1em;
+      background-color: #0066cc;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #004c99;
+    }
+
+    #response {
+      margin-top: 30px;
+      padding: 20px;
+      border: 1px solid #ccc;
+      background: white;
+      width: 100%;
+      border-radius: 6px;
+    }
+
+    strong {
+      display: block;
+      margin-top: 15px;
+      font-size: 1.1em;
+    }
+
+    #sources {
+      margin-top: 5px;
+      font-size: 1em;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Ask a Question to AI</h2>
+    <label for="query">Enter your question:</label>
+    <input type="text" id="query" placeholder="e.g., What is vector database?" />
+    <button onclick="askQuestion()">Ask</button>
+
+    <div id="response" style="display: none;">
+      <p><strong>Answer:</strong> <span id="answer"></span></p>
+      <p><strong>Sources:</strong> <div id="sources"></div></p>
+    </div>
+  </div>
+
+  <script>
+    async function askQuestion() {
+      const question = document.getElementById("query").value;
+      const responseElem = document.getElementById("response");
+      const answerElem = document.getElementById("answer");
+      const sourcesElem = document.getElementById("sources");
+
+      try {
+        const res = await fetch("http://localhost:5678/webhook/3c16bb35-a766-4fb0-9238-c3d92890339e", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query: question })
+        });
+
+        const data = await res.json();
+
+        answerElem.textContent = data.answer || "No answer generated";
+
+        const references = data.references || "No sources found";
+        const uniqueRefs = Array.from(new Set(
+          references
+            .split("\n")
+            .map(ref => ref.replace(/^\(\d+\)\s*/, "").trim())
+        )).filter(ref => ref !== "");
+
+        sourcesElem.innerHTML = uniqueRefs
+          .map((ref, idx) => `(${idx + 1}) ${ref}`)
+          .join("<br>");
+
+        responseElem.style.display = "block";
+      } catch (err) {
+        answerElem.textContent = "Error: Unable to fetch response.";
+        sourcesElem.textContent = "";
+        responseElem.style.display = "block";
+        console.error(err);
+      }
+    }
+  </script>
+</body>
+</html>
