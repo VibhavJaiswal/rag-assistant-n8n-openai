@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 from pinecone import Pinecone, ServerlessSpec
 from langchain_openai import OpenAIEmbeddings
 from langchain_pinecone import PineconeVectorStore
-from query_logic import get_contextual_answer
+from backend.query_logic import get_contextual_answer
 
 # Load environment
 dotenv_path = os.path.join(os.path.dirname(__file__), '.env')
